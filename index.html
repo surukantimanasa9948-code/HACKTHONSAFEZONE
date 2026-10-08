@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAFEZONE AI – Smart Hazard Mapping & Relocation System</title>
+  <meta name="description" content="Real-time AI/ML disaster risk assessment and relocation support platform designed to identify hazardous areas, analyze vulnerable populations, and recommend designated shelters.">
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- App Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- App Header & Navigation Bar -->
+  <header class="app-header">
+    <div class="brand-logo">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div>
+        <h1>SAFEZONE AI</h1>
+        <div class="brand-tagline">Identify Risk. Protect Communities. Act Early.</div>
+      </div>
+    </div>
+
+    <nav>
+      <ul class="nav-links">
+        <li class="nav-link active" data-page="dashboard"><i class="fa-solid fa-gauge-high"></i> Dashboard</li>
+        <li class="nav-link" data-page="map"><i class="fa-solid fa-map-location-dot"></i> Hazard Map</li>
+        <li class="nav-link" data-page="risk"><i class="fa-solid fa-brain"></i> Risk Analysis</li>
+        <li class="nav-link" data-page="population"><i class="fa-solid fa-users"></i> Population</li>
+        <li class="nav-link" data-page="shelters"><i class="fa-solid fa-house-medical"></i> Shelters</li>
+        <li class="nav-link" data-page="alerts"><i class="fa-solid fa-triangle-exclamation"></i> Alerts</li>
+        <li class="nav-link" data-page="admin"><i class="fa-solid fa-user-gear"></i> Admin</li>
+      </ul>
+    </nav>
+
+    <div class="header-status">
+      <div class="live-badge">
+        <div class="pulse-dot"></div>
+        <span>LIVE TELEMETRY STREAM: ACTIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Real-Time Sensor Telemetry Ticker Banner -->
+  <div id="live-telemetry-ticker" style="background: rgba(0, 141, 218, 0.15); border-bottom: 1px solid var(--border-glow); padding: 6px 24px; font-family: var(--font-mono); font-size: 0.8rem; color: var(--accent-ice); display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap;">
+    <span style="background: var(--accent-cyan); color: white; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.7rem; text-transform: uppercase;">REAL-TIME WEBSOCKET</span>
+    <div id="ticker-content" style="flex: 1; overflow: hidden; text-overflow: ellipsis;">
+      ⚡ Establishing WebSocket connection to IoT environmental sensor stream...
+    </div>
+  </div>
+
+  <main class="main-container">
+
+    <!-- ==========================================================================
+         PAGE 1: DASHBOARD VIEW
+         ========================================================================== -->
+    <div id="view-dashboard" class="page-view active">
+      <!-- Metric Cards Grid -->
+      <div class="metrics-grid">
+        <div class="metric-card extreme">
+          <div class="metric-header">
+            <span class="metric-title">Extreme Risk Areas</span>
+            <div class="metric-icon"><i class="fa-solid fa-radiation"></i></div>
+          </div>
+          <div class="metric-value" id="metric-extreme-areas">0</div>
+          <div class="metric-subtext">🔴 Critical Threat Level (Score 76-100)</div>
+        </div>
+
+        <div class="metric-card high">
+          <div class="metric-header">
+            <span class="metric-title">High Risk Areas</span>
+            <div class="metric-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+          </div>
+          <div class="metric-value" id="metric-high-areas">0</div>
+          <div class="metric-subtext">🟠 Elevated Alert Level (Score 51-75)</div>
+        </div>
+
+        <div class="metric-card low">
+          <div class="metric-header">
+            <span class="metric-title">Affected Population</span>
+            <div class="metric-icon"><i class="fa-solid fa-users-viewfinder"></i></div>
+          </div>
+          <div class="metric-value" id="metric-affected-pop">0</div>
+          <div class="metric-subtext">Estimated total vulnerable individuals</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-title">Available Shelters</span>
+            <div class="metric-icon"><i class="fa-solid fa-person-shelter"></i></div>
+          </div>
+          <div class="metric-value" id="metric-available-shelters">0</div>
+          <div class="metric-subtext">Open spaces in designated safe centers</div>
+        </div>
+
+        <div class="metric-card extreme">
+          <div class="metric-header">
+            <span class="metric-title">Active Alerts</span>
+            <div class="metric-icon"><i class="fa-solid fa-bell"></i></div>
+          </div>
+          <div class="metric-value" id="metric-active-alerts">0</div>
+          <div class="metric-subtext">Live emergency broadcast dispatches</div>
+        </div>
+      </div>
+
+      <!-- Main GIS & Location Info Layout -->
+      <div class="dashboard-layout">
+        <div class="panel-box">
+          <div class="panel-header">
+            <div class="panel-title">
+              <i class="fa-solid fa-earth-asia"></i> Real-Time GIS Hazard & Shelter Map
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-muted);">
+              🟢 Low &nbsp; 🟡 Medium &nbsp; 🟠 High &nbsp; 🔴 Extreme
+            </div>
+          </div>
+          <div class="map-wrapper">
+            <div id="gis-map"></div>
+          </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 18px;">
+          <!-- Selected Location Details Panel -->
+          <div class="panel-box" id="selected-location-details">
+            <div class="panel-title"><i class="fa-solid fa-location-dot"></i> Monitored Zone Focus</div>
+            <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px;">
+              Click any hazard circle or shelter icon on the map to inspect risk score, telemetry, and designated shelter route.
+            </p>
+          </div>
+
+          <!-- Live Broadcast Feed Panel -->
+          <div class="panel-box">
+            <div class="panel-title" style="margin-bottom: 12px;"><i class="fa-solid fa-bullhorn"></i> Emergency Alerts</div>
+            <div id="dashboard-alerts-list"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analytics Charts Grid -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+        <div class="panel-box">
+          <div class="panel-title"><i class="fa-solid fa-chart-pie"></i> Hazard Breakdown Distribution</div>
+          <div style="height: 260px; margin-top: 14px;">
+            <canvas id="chart-hazard-types"></canvas>
+          </div>
+        </div>
+
+        <div class="panel-box">
+          <div class="panel-title"><i class="fa-solid fa-chart-simple"></i> Shelter Occupancy vs Capacity</div>
+          <div style="height: 260px; margin-top: 14px;">
+            <canvas id="chart-shelter-occupancy"></canvas>
+          </div>
+        </div>
+      </div>
+      
+      <div class="disclaimer-box">
+        <i class="fa-solid fa-info-circle"></i>
+        <div><strong>Real-Time System Notice:</strong> Connected to live WebSocket sensor telemetry stream. Risk assessments serve as decision support tools.</div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 2: HAZARD MAP VIEW
+         ========================================================================== -->
+    <div id="view-map" class="page-view">
+      <div class="panel-box" style="margin-bottom: 20px;">
+        <div class="panel-header">
+          <div class="panel-title"><i class="fa-solid fa-map-location-dot"></i> Interactive GIS Disaster Risk & Evacuation Map</div>
+          <form id="map-search-form" style="display: flex; gap: 10px;">
+            <input type="text" id="map-search-input" class="form-control" placeholder="Search Place / Address (e.g. Wayanad, Kochi)..." style="width: 300px;">
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-magnifying-glass"></i> Search</button>
+          </form>
+        </div>
+        <div class="map-wrapper" style="height: 680px;">
+          <div id="full-gis-map"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 3: RISK ANALYSIS VIEW
+         ========================================================================== -->
+    <div id="view-risk" class="page-view">
+      <div style="display: grid; grid-template-columns: 1fr 1.4fr; gap: 24px;">
+        
+        <!-- Input Form Panel -->
+        <div class="panel-box">
+          <div class="panel-title" style="margin-bottom: 16px;"><i class="fa-solid fa-sliders"></i> AI Risk Estimation Telemetry Input</div>
+          
+          <form id="risk-calculator-form">
+            <div class="form-group">
+              <label class="form-label">Pre-select Monitored Region (Optional):</label>
+              <select id="risk-select-location" class="form-select"></select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Hazard Category:</label>
+              <select id="risk-select-hazard" class="form-select">
+                <option value="Flood">Flood</option>
+                <option value="Landslide">Landslide</option>
+                <option value="Cyclone">Cyclone</option>
+                <option value="Forest Fire">Forest Fire</option>
+                <option value="Extreme Rainfall">Extreme Rainfall</option>
+              </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Rainfall (mm):</label>
+                <input type="number" id="risk-input-rainfall" class="form-control" value="210" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Water Level (m):</label>
+                <input type="number" id="risk-input-water" class="form-control" value="4.8" step="0.1">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Temperature (°C):</label>
+                <input type="number" id="risk-input-temp" class="form-control" value="27.5" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Wind Speed (km/h):</label>
+                <input type="number" id="risk-input-wind" class="form-control" value="35.0" step="0.1">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Elevation (m):</label>
+                <input type="number" id="risk-input-elevation" class="form-control" value="2.5" step="0.1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Slope Incline (°):</label>
+                <input type="number" id="risk-input-slope" class="form-control" value="12" step="0.1">
+              </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Historical Freq Index (0-1):</label>
+                <input type="number" id="risk-input-history" class="form-control" value="0.85" step="0.05" max="1.0" min="0">
+              </div>
+              <div class="form-group">
+                <label class="form-label">Pop Density (/km²):</label>
+                <input type="number" id="risk-input-density" class="form-control" value="3200">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+              <i class="fa-solid fa-calculator"></i> Run AI Risk Analysis
+            </button>
+          </form>
+        </div>
+
+        <!-- Output Results Panel -->
+        <div id="risk-results-output">
+          <div class="panel-box" style="text-align: center; padding: 60px 20px;">
+            <i class="fa-solid fa-brain" style="font-size: 3rem; color: var(--accent-cyan); margin-bottom: 16px;"></i>
+            <h3>ML Risk Model Ready</h3>
+            <p style="color: var(--text-muted); max-width: 400px; margin: 10px auto;">
+              Select a region or adjust environmental parameters on the left to calculate composite risk score (0-100) and feature importances.
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 4: POPULATION ANALYSIS VIEW
+         ========================================================================== -->
+    <div id="view-population" class="page-view">
+      <div class="metrics-grid" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="metric-card">
+          <div class="metric-title">Total Monitored Pop</div>
+          <div class="metric-value" id="pop-total-val">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-title">Total Households</div>
+          <div class="metric-value" id="pop-households-val">0</div>
+        </div>
+        <div class="metric-card high">
+          <div class="metric-title">Vulnerable Population</div>
+          <div class="metric-value" id="pop-vuln-val">0</div>
+        </div>
+        <div class="metric-card extreme">
+          <div class="metric-title">Est. Affected Population</div>
+          <div class="metric-value" id="pop-affected-val">0</div>
+        </div>
+      </div>
+
+      <div class="panel-box" style="margin-bottom: 24px;">
+        <div class="panel-title"><i class="fa-solid fa-chart-column"></i> Vulnerability & Demographics Comparison</div>
+        <div style="height: 320px; margin-top: 16px;">
+          <canvas id="chart-population-vulnerability"></canvas>
+        </div>
+      </div>
+
+      <div class="panel-box">
+        <div class="panel-title"><i class="fa-solid fa-table-list"></i> Population & Vulnerability Breakdown Table</div>
+        <div class="table-wrapper" style="margin-top: 16px;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Location / Zone</th>
+                <th>Current Risk</th>
+                <th>Total Population</th>
+                <th>Households</th>
+                <th>Vulnerable Population</th>
+                <th>Est. Affected Pop</th>
+              </tr>
+            </thead>
+            <tbody id="population-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 5: SHELTER MANAGEMENT VIEW
+         ========================================================================== -->
+    <div id="view-shelters" class="page-view">
+      
+      <!-- AI Shelter Recommender Tool -->
+      <div class="panel-box" style="margin-bottom: 24px;">
+        <div class="panel-title"><i class="fa-solid fa-route"></i> AI Shelter Suitability Recommender</div>
+        <div style="display: flex; gap: 16px; align-items: flex-end; margin-top: 14px;">
+          <div style="flex: 1;">
+            <label class="form-label">Hazard Latitude (°N):</label>
+            <input type="number" id="recommender-lat" class="form-control" value="9.9312" step="0.0001">
+          </div>
+          <div style="flex: 1;">
+            <label class="form-label">Hazard Longitude (°E):</label>
+            <input type="number" id="recommender-lon" class="form-control" value="76.2673" step="0.0001">
+          </div>
+          <button id="btn-run-shelter-recommend" class="btn btn-primary" style="height: 42px;">
+            <i class="fa-solid fa-wand-magic-sparkles"></i> Calculate Recommended Shelter
+          </button>
+        </div>
+        <div id="shelter-recommend-output" style="display: none;"></div>
+      </div>
+
+      <!-- Shelter Inventory Table -->
+      <div class="panel-box">
+        <div class="panel-title"><i class="fa-solid fa-house-medical"></i> Designated Safe Shelters Registry</div>
+        <div class="table-wrapper" style="margin-top: 16px;">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Shelter Name</th>
+                <th>Location (Lat, Lon)</th>
+                <th>Total Capacity</th>
+                <th>Current Occupancy</th>
+                <th>Available Spaces</th>
+                <th>Accessibility</th>
+                <th>Safety Status</th>
+              </tr>
+            </thead>
+            <tbody id="shelter-table-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 6: ALERTS VIEW
+         ========================================================================== -->
+    <div id="view-alerts" class="page-view">
+      <div class="panel-box">
+        <div class="panel-title" style="margin-bottom: 20px;"><i class="fa-solid fa-bullhorn"></i> Emergency Early Warning Broadcast Feed</div>
+        <div id="alerts-feed-container"></div>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         PAGE 7: ADMIN / AUTHORITY VIEW
+         ========================================================================== -->
+    <div id="view-admin" class="page-view">
+      <div class="panel-box">
+        <div class="panel-title"><i class="fa-solid fa-user-shield"></i> Emergency Operations Center (EOC) Command Portal</div>
+        
+        <!-- Auth Overlay -->
+        <div id="admin-auth-overlay" style="max-width: 420px; margin: 40px auto; padding: 24px; background: rgba(11,25,44,0.9); border-radius: var(--radius-md); border: 1px solid var(--border-glow);">
+          <h3 style="color: white; margin-bottom: 12px; text-align: center;">Authority Authentication</h3>
+          <form id="admin-login-form">
+            <div class="form-group">
+              <label class="form-label">Official Email:</label>
+              <input type="email" id="admin-email" class="form-control" value="admin@safezone.ai" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Password:</label>
+              <input type="password" id="admin-password" class="form-control" value="admin123" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fa-solid fa-key"></i> Authenticate Officer
+            </button>
+          </form>
+          <div style="font-size: 0.8rem; color: var(--text-muted); margin-top: 12px; text-align: center;">
+            Demo Credentials: admin@safezone.ai / admin123
+          </div>
+        </div>
+
+        <!-- Authenticated Admin Content -->
+        <div id="admin-panel-content" style="display: none; margin-top: 24px;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            
+            <!-- Register Shelter Form -->
+            <div style="background: rgba(11,25,44,0.6); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <h4 style="color: var(--accent-ice); margin-bottom: 14px;">➕ Add Designated Shelter</h4>
+              <form id="admin-add-shelter-form">
+                <div class="form-group">
+                  <label class="form-label">Shelter Name:</label>
+                  <input type="text" id="new-shelter-name" class="form-control" required placeholder="e.g. Model Relief Camp Beta">
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div class="form-group">
+                    <label class="form-label">Latitude (°N):</label>
+                    <input type="number" id="new-shelter-lat" class="form-control" step="0.0001" required value="10.0120">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Longitude (°E):</label>
+                    <input type="number" id="new-shelter-lon" class="form-control" step="0.0001" required value="76.3210">
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div class="form-group">
+                    <label class="form-label">Capacity:</label>
+                    <input type="number" id="new-shelter-capacity" class="form-control" required value="1500">
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Current Occupancy:</label>
+                    <input type="number" id="new-shelter-occupancy" class="form-control" value="200">
+                  </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div class="form-group">
+                    <label class="form-label">Accessibility:</label>
+                    <select id="new-shelter-access" class="form-select">
+                      <option value="Good">Good</option>
+                      <option value="Moderate">Moderate</option>
+                      <option value="Poor">Poor</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Safety Status:</label>
+                    <select id="new-shelter-status" class="form-select">
+                      <option value="Approved">Approved</option>
+                      <option value="Conditional">Conditional</option>
+                    </select>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">
+                  <i class="fa-solid fa-plus"></i> Register Shelter
+                </button>
+              </form>
+            </div>
+
+            <!-- Broadcast Alert Form -->
+            <div style="background: rgba(11,25,44,0.6); padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-subtle);">
+              <h4 style="color: var(--risk-extreme); margin-bottom: 14px;">🚨 Dispatch Emergency Alert</h4>
+              <form id="admin-issue-alert-form">
+                <div class="form-group">
+                  <label class="form-label">Target Zone Location ID:</label>
+                  <input type="number" id="admin-alert-location" class="form-control" value="1" required>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                  <div class="form-group">
+                    <label class="form-label">Hazard Category:</label>
+                    <select id="admin-alert-hazard" class="form-select">
+                      <option value="Flood">Flood</option>
+                      <option value="Landslide">Landslide</option>
+                      <option value="Cyclone">Cyclone</option>
+                      <option value="Forest Fire">Forest Fire</option>
+                    </select>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Risk Severity Level:</label>
+                    <select id="admin-alert-level" class="form-select">
+                      <option value="EXTREME">EXTREME</option>
+                      <option value="HIGH">HIGH</option>
+                      <option value="MEDIUM">MEDIUM</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Official Advisory Message:</label>
+                  <textarea id="admin-alert-msg" class="form-control" rows="3" required placeholder="Enter emergency relocation directive..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger" style="width: 100%; margin-top: 10px;">
+                  <i class="fa-solid fa-bullhorn"></i> Broadcast Emergency Alert
+                </button>
+              </form>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JS Dependencies -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Application Modules -->
+  <script src="js/api.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/risk.js"></script>
+  <script src="js/population.js"></script>
+  <script src="js/shelters.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/app.js"></script>
+
+</body>
+</html>
